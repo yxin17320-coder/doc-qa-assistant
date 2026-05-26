@@ -64,10 +64,12 @@ class RAGEngine:
         elif ext in [".docx", ".doc"]:
             loader = Docx2txtLoader(file_path)
         elif ext in [".txt", ".md"]:
-            try:
-                return TextLoader(file_path, encoding="utf-8").load()
-            except UnicodeDecodeError:
-                return TextLoader(file_path, encoding="gbk").load()
+            for enc in ["utf-8", "gbk", "gb2312", "gb18030", "latin-1"]:
+                try:
+                    return TextLoader(file_path, encoding=enc).load()
+                except UnicodeDecodeError:
+                    continue
+            raise RuntimeError(f"无法识别文件编码: {file_path}")
         else:
             raise ValueError(f"不支持的文件格式: {ext}")
         return loader.load()
