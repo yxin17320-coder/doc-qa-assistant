@@ -8,10 +8,6 @@ from pathlib import Path
 if "DEEPSEEK_API_KEY" in st.secrets:
     os.environ["DEEPSEEK_API_KEY"] = st.secrets["DEEPSEEK_API_KEY"]
 
-# 非中国大陆环境不需要 HF 镜像
-if "HF_ENDPOINT" not in os.environ:
-    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-
 from rag_engine import RAGEngine
 
 if "rag_engine" not in st.session_state:

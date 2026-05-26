@@ -5,9 +5,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 国内 HuggingFace 镜像，下载模型用
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
