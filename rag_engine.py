@@ -64,7 +64,10 @@ class RAGEngine:
         elif ext in [".docx", ".doc"]:
             loader = Docx2txtLoader(file_path)
         elif ext in [".txt", ".md"]:
-            loader = TextLoader(file_path, encoding="utf-8")
+            try:
+                return TextLoader(file_path, encoding="utf-8").load()
+            except UnicodeDecodeError:
+                return TextLoader(file_path, encoding="gbk").load()
         else:
             raise ValueError(f"不支持的文件格式: {ext}")
         return loader.load()
