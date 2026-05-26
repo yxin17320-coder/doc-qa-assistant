@@ -1,5 +1,6 @@
 import os
 import uuid
+import html
 import tempfile
 import streamlit as st
 from pathlib import Path
@@ -93,6 +94,7 @@ with st.sidebar:
                 st.rerun()
 
     ALLOWED_TYPES = {"pdf", "docx", "doc", "txt", "md"}
+    MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
     if "uploading" not in st.session_state:
         st.session_state.uploading = False
@@ -108,10 +110,20 @@ with st.sidebar:
 
     if st.session_state.uploading and uploaded_files:
         bad_files = [f for f in uploaded_files if f.name.split(".")[-1].lower() not in ALLOWED_TYPES]
+        huge_files = [f for f in uploaded_files if f.size > MAX_FILE_SIZE]
         if bad_files:
             st.session_state.upload_alerts = []
             st.session_state.upload_alerts.append(
-                ("error", f"不支持的格式: {', '.join(f.name for f in bad_files)}")
+                ("error", f"不支持的格式: {', '.join(html.escape(f.name) for f in bad_files)}")
+            )
+            st.session_state.uploading = False
+            st.session_state.uploader_key += 1
+            st.rerun()
+
+        if huge_files:
+            st.session_state.upload_alerts = []
+            st.session_state.upload_alerts.append(
+                ("error", f"文件过大（超过50MB）: {', '.join(html.escape(f.name) for f in huge_files)}")
             )
             st.session_state.uploading = False
             st.session_state.uploader_key += 1
@@ -133,7 +145,7 @@ with st.sidebar:
                         success_count += 1
                         tmp_path.unlink(missing_ok=True)
                     except Exception as e:
-                        fail_errors.append(f"{file.name}: {str(e)}")
+                        fail_errors.append(f"{html.escape(file.name)}: {html.escape(str(e))}")
 
                 st.session_state.upload_alerts = []
                 if success_count > 0:
