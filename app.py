@@ -3,6 +3,15 @@ import uuid
 import tempfile
 import streamlit as st
 from pathlib import Path
+
+# 从 Streamlit Cloud secrets 或本地 .env 读取 API Key
+if "DEEPSEEK_API_KEY" in st.secrets:
+    os.environ["DEEPSEEK_API_KEY"] = st.secrets["DEEPSEEK_API_KEY"]
+
+# 非中国大陆环境不需要 HF 镜像
+if "HF_ENDPOINT" not in os.environ:
+    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+
 from rag_engine import rag_engine
 
 st.set_page_config(
