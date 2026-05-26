@@ -67,9 +67,9 @@ class RAGEngine:
             for enc in ["utf-8", "gbk", "gb2312", "gb18030", "latin-1"]:
                 try:
                     return TextLoader(file_path, encoding=enc).load()
-                except UnicodeDecodeError:
+                except Exception:
                     continue
-            raise RuntimeError(f"无法识别文件编码: {file_path}")
+            raise RuntimeError(f"无法读取文件，已尝试多种编码: {file_path}")
         else:
             raise ValueError(f"不支持的文件格式: {ext}")
         return loader.load()
