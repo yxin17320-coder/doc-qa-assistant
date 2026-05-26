@@ -25,7 +25,11 @@ class RAGEngine:
     def __init__(self):
         api_key = os.getenv("DEEPSEEK_API_KEY")
         if not api_key:
-            raise RuntimeError("请在 .env 文件中设置 DEEPSEEK_API_KEY")
+            raise RuntimeError(
+                "未找到 DEEPSEEK_API_KEY。本地运行请在 .env 文件中设置；"
+                "Streamlit Cloud 部署请在 Manage app → Secrets 中添加：\n"
+                'DEEPSEEK_API_KEY = "sk-your-key-here"'
+            )
 
         # 本地轻量 Embedding 模型，80MB，免费无需 API
         self.embeddings = HuggingFaceEmbeddings(
