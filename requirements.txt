@@ -13,3 +13,4 @@ python-docx
 python-multipart
 python-dotenv
 sentence-transformers
+docx2txt
