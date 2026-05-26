@@ -154,6 +154,3 @@ class RAGEngine:
 
     def get_chunk_count(self) -> int:
         return sum(self.uploaded_docs.values())
-
-
-rag_engine = RAGEngine()

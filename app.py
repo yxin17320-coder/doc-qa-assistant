@@ -12,7 +12,16 @@ if "DEEPSEEK_API_KEY" in st.secrets:
 if "HF_ENDPOINT" not in os.environ:
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
-from rag_engine import rag_engine
+from rag_engine import RAGEngine
+
+if "rag_engine" not in st.session_state:
+    try:
+        st.session_state.rag_engine = RAGEngine()
+    except Exception as e:
+        st.error(f"初始化失败: {e}")
+        st.stop()
+
+rag_engine = st.session_state.rag_engine
 
 st.set_page_config(
     page_title="智能文档问答助手",

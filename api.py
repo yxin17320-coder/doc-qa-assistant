@@ -4,7 +4,9 @@ from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from rag_engine import rag_engine
+from rag_engine import RAGEngine
+
+rag_engine = RAGEngine()
 
 app = FastAPI(title="文档问答助手 API", version="1.0.0")
 
