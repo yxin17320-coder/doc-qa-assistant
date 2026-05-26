@@ -1,7 +1,9 @@
-import requests
+import os
+import uuid
+import tempfile
 import streamlit as st
-
-API_BASE = "http://localhost:8000"
+from pathlib import Path
+from rag_engine import rag_engine
 
 st.set_page_config(
     page_title="智能文档问答助手",
@@ -34,7 +36,7 @@ with st.sidebar:
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
     if "upload_alerts" not in st.session_state:
-        st.session_state.upload_alerts = []  # [(type, msg), ...]
+        st.session_state.upload_alerts = []
 
     uploaded_files = st.file_uploader(
         "支持 PDF / Word / TXT / Markdown",
@@ -78,7 +80,6 @@ with st.sidebar:
 
     ALLOWED_TYPES = {"pdf", "docx", "doc", "txt", "md"}
 
-    # 处理中则禁用上传按钮
     if "uploading" not in st.session_state:
         st.session_state.uploading = False
 
@@ -107,19 +108,18 @@ with st.sidebar:
                 fail_errors = []
                 for file in uploaded_files:
                     try:
-                        resp = requests.post(
-                            f"{API_BASE}/upload",
-                            files={"file": (file.name, file.getvalue())},
-                            timeout=30,
+                        # 保存到临时文件，让 rag_engine 处理
+                        safe_name = f"{uuid.uuid4().hex[:8]}_{file.name}"
+                        tmp_path = Path(tempfile.gettempdir()) / safe_name
+                        with open(tmp_path, "wb") as f:
+                            f.write(file.getvalue())
+
+                        chunk_count = rag_engine.add_document(
+                            str(tmp_path), display_name=file.name
                         )
-                        if resp.status_code == 200:
-                            success_count += 1
-                        else:
-                            detail = resp.json().get("detail", "未知错误")
-                            fail_errors.append(f"{file.name}: {detail}")
-                    except requests.ConnectionError:
-                        fail_errors.append("无法连接后端，请先启动 API 服务")
-                        break
+                        success_count += 1
+                        # 清理临时文件
+                        tmp_path.unlink(missing_ok=True)
                     except Exception as e:
                         fail_errors.append(f"{file.name}: {str(e)}")
 
@@ -137,34 +137,22 @@ with st.sidebar:
     st.divider()
 
     st.header("📋 已上传文档")
-    try:
-        resp = requests.get(f"{API_BASE}/documents", timeout=5)
-        if resp.status_code == 200:
-            data = resp.json()
-            docs = data.get("documents", [])
-            if docs:
-                for doc in docs:
-                    st.write(f"• {doc}")
-                    if st.button("🗑 删除", key=f"del_{doc}"):
-                        try:
-                            del_resp = requests.delete(
-                                f"{API_BASE}/documents/{doc}", timeout=5
-                            )
-                            if del_resp.status_code == 200:
-                                st.rerun()
-                        except requests.ConnectionError:
-                            st.error("删除失败")
-                st.caption(f"总计 {data['total_chunks']} 个文档片段")
-            else:
-                st.caption("暂无文档，请上传")
-    except requests.ConnectionError:
-        st.caption("等待后端服务启动...")
+    docs = rag_engine.get_documents()
+    total_chunks = rag_engine.get_chunk_count()
+    if docs:
+        for doc in docs:
+            st.write(f"• {doc}")
+            if st.button("🗑 删除", key=f"del_{doc}"):
+                rag_engine.delete_document(doc)
+                st.rerun()
+        st.caption(f"总计 {total_chunks} 个文档片段")
+    else:
+        st.caption("暂无文档，请上传")
 
 # === Main Chat ===
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display history
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
@@ -174,7 +162,6 @@ for msg in st.session_state.messages:
                     st.caption(f"**来源 {i + 1}: {src['source']}**")
                     st.text(src["content"][:300])
 
-# Handle input
 if prompt := st.chat_input("输入你的问题，比如「这份文档主要讲了什么？」"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -183,40 +170,32 @@ if prompt := st.chat_input("输入你的问题，比如「这份文档主要讲�
     with st.chat_message("assistant"):
         with st.spinner("正在检索文档并生成回答..."):
             try:
-                resp = requests.post(
-                    f"{API_BASE}/query",
-                    json={"question": prompt},
-                    timeout=60,
+                result = rag_engine.query(prompt)
+                st.write(result["answer"])
+                sources = result.get("sources", [])
+                if sources:
+                    with st.expander("📖 参考来源"):
+                        for i, src in enumerate(sources):
+                            st.caption(f"**来源 {i + 1}: {src['source']}**")
+                            st.text(src["content"][:300])
+                st.session_state.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": result["answer"],
+                        "sources": sources,
+                    }
                 )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    st.write(data["answer"])
-                    sources = data.get("sources", [])
-                    if sources:
-                        with st.expander("📖 参考来源"):
-                            for i, src in enumerate(sources):
-                                st.caption(f"**来源 {i + 1}: {src['source']}**")
-                                st.text(src["content"][:300])
-                    st.session_state.messages.append(
-                        {
-                            "role": "assistant",
-                            "content": data["answer"],
-                            "sources": sources,
-                        }
-                    )
-                else:
-                    st.error(f"查询失败: {resp.json().get('detail', '')}")
-            except requests.ConnectionError:
-                st.error("❌ 无法连接后端服务，请先运行: uvicorn api:app --reload")
+            except Exception as e:
+                st.error(f"查询失败: {e}")
 
-# 智能滚动：只在用户处于底部时才自动滚，手动上翻时不抢
+# 智能滚动
 st.components.v1.html(
     """
     <script>
     (function() {
         var main = window.parent.document.querySelector('.main');
         if (!main) return;
-        var threshold = 100;  // 距底部100px以内视为"在底部"
+        var threshold = 100;
         var atBottom = main.scrollHeight - main.scrollTop - main.clientHeight < threshold;
         if (atBottom) {
             main.scrollTo(0, main.scrollHeight);
