@@ -40,7 +40,7 @@ st.markdown(
 )
 
 st.title("📚 智能文档问答助手")
-st.caption("上传文档 → 自然语言提问 → AI 从文档中精准找答案")
+st.caption("上传文档 → 直接提问 → AI 从文档中精准找答案")
 
 # === Sidebar ===
 with st.sidebar:
