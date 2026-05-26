@@ -122,9 +122,8 @@ with st.sidebar:
                 fail_errors = []
                 for file in uploaded_files:
                     try:
-                        # 保存到临时文件，让 rag_engine 处理
-                        safe_name = f"{uuid.uuid4().hex[:8]}_{file.name}"
-                        tmp_path = Path(tempfile.gettempdir()) / safe_name
+                        ext = Path(file.name).suffix
+                        tmp_path = Path(tempfile.gettempdir()) / f"{uuid.uuid4().hex}{ext}"
                         with open(tmp_path, "wb") as f:
                             f.write(file.getvalue())
 
@@ -132,7 +131,6 @@ with st.sidebar:
                             str(tmp_path), display_name=file.name
                         )
                         success_count += 1
-                        # 清理临时文件
                         tmp_path.unlink(missing_ok=True)
                     except Exception as e:
                         fail_errors.append(f"{file.name}: {str(e)}")
