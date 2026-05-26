@@ -1,0 +1,15 @@
+langchain
+langchain-openai
+langchain-anthropic
+langchain-community
+chromadb
+openai
+anthropic
+fastapi
+uvicorn
+streamlit
+pypdf
+python-docx
+python-multipart
+python-dotenv
+sentence-transformers
